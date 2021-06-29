@@ -4,6 +4,7 @@ import connection from "./database/Database.js";
 import userSchema from "./schema/newUser.schema.js";
 import bcrypt from "bcrypt";
 import userSanitization from "./sanitization/newUser.js";
+import { v4 as uuid } from "uuid";
 
 const app = express();
 app.use(cors());
@@ -30,6 +31,34 @@ app.post("/sign-up", async (req, res) => {
       VALUES ($1,$2,$3,$4);
     `, [name, email, bcrypt.hashSync(password, 10), picture ? picture : null]);
     res.sendStatus(201);
+  } catch (e) {
+    console.error(e);
+    res.sendStatus(500);
+  }
+});
+
+app.post("/sign-in", async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    const result = await connection.query(`
+      SELECT * FROM users WHERE email = $1
+    `, [email]);
+
+
+    if (!result.rowCount || !bcrypt.compareSync(password, result.rows[0].password)) {
+      res.status(401).send("Email ou senha inválidos");
+    } else {
+      const user = result.rows[0];
+      const token = uuid();
+      delete user.password;
+      await connection.query(`
+        INSERT INTO sessions 
+        ("userId", token) 
+        VALUES ($1,$2)
+      `, [user.id, token]);
+      res.status(200).send({ user, token });
+    }
   } catch (e) {
     console.error(e);
     res.sendStatus(500);
