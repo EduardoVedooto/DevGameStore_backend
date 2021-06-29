@@ -36,4 +36,15 @@ app.post("/sign-up", async (req, res) => {
   }
 });
 
+app.get("/dashboard", async (req, res) => {
+  try{
+    const games = await connection.query(`SELECT * FROM games;`);
+    res.status(200).send(games.rows)
+  }catch(e){
+    console.log(e);
+    res.sendStatus(500);
+  }
+  
+});
+
 export default app;
