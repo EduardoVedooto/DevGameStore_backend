@@ -5,7 +5,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "NODE_ENV=test npx jest -i",
+    "test": "DB_DATABASE=gamestore_test npx jest -i",
     "server": "npx nodemon src/Server.js"
   },
   "keywords": [],
