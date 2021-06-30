@@ -44,7 +44,6 @@ app.get("/dashboard", async (req, res) => {
     console.log(e);
     res.sendStatus(500);
   }
-  
 });
 
 export default app;
