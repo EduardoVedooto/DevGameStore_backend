@@ -65,4 +65,25 @@ app.post("/sign-in", async (req, res) => {
   }
 });
 
+app.get("/dashboard", async (req, res) => {
+  try{
+    const games = await connection.query(`SELECT * FROM games;`);
+    res.status(200).send(games.rows)
+  }catch(e){
+    console.log(e);
+    res.sendStatus(500);
+  }
+});
+
+app.get("/games/:category", async (req, res) => {
+  const { category } = req.params;
+  try{
+    const games = await connection.query(`SELECT * FROM games WHERE category = $1`, [category]);
+    res.status(200).send(games.rows)
+  }catch(e){
+    console.log(e);
+    res.sendStatus(500);
+  }
+});
+
 export default app;
