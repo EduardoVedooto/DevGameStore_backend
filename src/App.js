@@ -5,6 +5,7 @@ import userSchema from "./schema/newUser.schema.js";
 import messageSchema from "./schema/newMessage.schema.js";
 import bcrypt from "bcrypt";
 import userSanitization from "./sanitization/newUser.js";
+import messageSanitization from "./sanitization/newMessage.js";
 import { v4 as uuid } from "uuid";
 
 const app = express();
@@ -102,7 +103,7 @@ app.get("/game/:id", async (req, res) => {
 app.get("/gamelist", async (req, res) => {
   const {gamename} = req.query;
   try{
-    const gameRequest = await connection.query('SELECT * FROM games WHERE name ILIKE $1', [gamename + "%"]);
+    const gameRequest = await connection.query('SELECT * FROM games WHERE name ILIKE $1', ["%" + gamename + "%"]);
     res.status(200).send(gameRequest.rows)
   }catch(e){
     console.log(e);
@@ -115,8 +116,15 @@ app.post("/contact-us", async (req, res) =>{
   if (validation.error) {
     return res.status(400).send(validation.error.details[0]);
   }
-  await connection.query('INSERT INTO contact (email, subject, message) VALUES ($1, $2, $3)', [email, subject, message]);
-  res.sendStatus(200);
+  const { email, subject, message } = messageSanitization(req.body);
+  try{
+    await connection.query('INSERT INTO contact (email, subject, message) VALUES ($1, $2, $3)', [email, subject, message]);
+    res.sendStatus(200);
+  }catch(e){
+    console.log(e);
+    res.sendStatus(500);
+  }
+  
 });
 
 export default app;
