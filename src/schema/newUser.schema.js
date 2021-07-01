@@ -12,3 +12,4 @@ const userSchema = data => {
 }
 
 export default userSchema;
+

@@ -2,8 +2,10 @@ import express from "express";
 import cors from "cors";
 import connection from "./database/Database.js";
 import userSchema from "./schema/newUser.schema.js";
+import messageSchema from "./schema/newMessage.schema.js";
 import bcrypt from "bcrypt";
 import userSanitization from "./sanitization/newUser.js";
+import messageSanitization from "./sanitization/newMessage.js";
 import { v4 as uuid } from "uuid";
 
 const app = express();
@@ -118,6 +120,32 @@ app.post("/cart", async (req, res) => {
     res.send(response.rows);
   } catch (e) {
     console.error(e);
+    res.sendStatus(500);
+  }
+});
+
+app.get("/gamelist", async (req, res) => {
+  const { gamename } = req.query;
+  try {
+    const gameRequest = await connection.query('SELECT * FROM games WHERE name ILIKE $1', ["%" + gamename + "%"]);
+    res.status(200).send(gameRequest.rows)
+  } catch (e) {
+    console.log(e);
+    res.sendStatus(500);
+  }
+});
+
+app.post("/contact-us", async (req, res) => {
+  const validation = messageSchema(req.body);
+  if (validation.error) {
+    return res.status(400).send(validation.error.details[0]);
+  }
+  const { email, subject, message } = messageSanitization(req.body);
+  try {
+    await connection.query('INSERT INTO contact (email, subject, message) VALUES ($1, $2, $3)', [email, subject, message]);
+    res.sendStatus(200);
+  } catch (e) {
+    console.log(e);
     res.sendStatus(500);
   }
 });
