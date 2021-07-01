@@ -97,18 +97,24 @@ app.get("/game/:id", async (req, res) => {
   }
 });
 
-app.get("/cart", async (req, res) => {
-  const ids = req.query.ids;
+app.post("/cart", async (req, res) => {
+  console.log(req.body);
+  const ids = req.body.ids;
+
+  console.log(ids);
 
   if (!ids || !ids.length) return res.sendStatus(400);
 
   let query = "SELECT id, name, price, image FROM games WHERE id = $1";
 
   for (let index = 1; index < ids.length; index++) {
-    query += ` AND id = $${index + 1}`;
+    query += ` OR id = $${index + 1}`;
   }
+
+  console.log(query, ids);
   try {
     const response = await connection.query(query, ids);
+    console.log(response.rows);
     res.send(response.rows);
   } catch (e) {
     console.error(e);
