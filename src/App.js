@@ -66,10 +66,10 @@ app.post("/sign-in", async (req, res) => {
 });
 
 app.get("/dashboard", async (req, res) => {
-  try{
+  try {
     const games = await connection.query(`SELECT * FROM games;`);
     res.status(200).send(games.rows)
-  }catch(e){
+  } catch (e) {
     console.log(e);
     res.sendStatus(500);
   }
@@ -77,10 +77,10 @@ app.get("/dashboard", async (req, res) => {
 
 app.get("/games/:category", async (req, res) => {
   const { category } = req.params;
-  try{
+  try {
     const games = await connection.query(`SELECT * FROM games WHERE category = $1`, [category]);
     res.status(200).send(games.rows)
-  }catch(e){
+  } catch (e) {
     console.log(e);
     res.sendStatus(500);
   }
@@ -88,11 +88,30 @@ app.get("/games/:category", async (req, res) => {
 
 app.get("/game/:id", async (req, res) => {
   const { id } = req.params;
-  try{
+  try {
     const game = await connection.query(`SELECT * FROM games WHERE id = $1`, [id]);
     res.status(200).send(game.rows[0])
-  }catch(e){
+  } catch (e) {
     console.log(e);
+    res.sendStatus(500);
+  }
+});
+
+app.get("/cart", async (req, res) => {
+  const ids = req.query.ids;
+
+  if (!ids || !ids.length) return res.sendStatus(400);
+
+  let query = "SELECT id, name, price, image FROM games WHERE id = $1";
+
+  for (let index = 1; index < ids.length; index++) {
+    query += ` AND id = $${index + 1}`;
+  }
+  try {
+    const response = await connection.query(query, ids);
+    res.send(response.rows);
+  } catch (e) {
+    console.error(e);
     res.sendStatus(500);
   }
 });
