@@ -86,4 +86,15 @@ app.get("/games/:category", async (req, res) => {
   }
 });
 
+app.get("/game/:id", async (req, res) => {
+  const { id } = req.params;
+  try{
+    const game = await connection.query(`SELECT * FROM games WHERE id = $1`, [id]);
+    res.status(200).send(game.rows[0])
+  }catch(e){
+    console.log(e);
+    res.sendStatus(500);
+  }
+});
+
 export default app;
