@@ -1,10 +1,8 @@
 const cardSanitization = data => {
-  const { name, month, year } = data;
+  const { name } = data;
   return {
     ...data,
-    name: name.split(" ").filter(w => w).join(" "),
-    month: month.trim(),
-    year: year.trim()
+    name: name.split(" ").filter(w => w).join(" ")
   }
 }
 

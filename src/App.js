@@ -172,6 +172,7 @@ app.post("/checkout", async (req, res) => {
   try {
     // TOKEN
     const token = req.header("Authorization")?.replace("Bearer ", "");
+    console.log(token);
     if (!token || !token.trim().length) return res.sendStatus(401);
     const response = await connection.query("SELECT * FROM sessions WHERE token = $1", [token]);
     if (!response.rowCount) return res.sendStatus(404);
