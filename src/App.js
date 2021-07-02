@@ -119,12 +119,12 @@ app.post("/contact-us", async (req, res) =>{
   const { email, subject, message } = messageSanitization(req.body);
   try{
     await connection.query('INSERT INTO contact (email, subject, message) VALUES ($1, $2, $3)', [email, subject, message]);
-    res.sendStatus(200);
+    res.sendStatus(201);
   }catch(e){
     console.log(e);
     res.sendStatus(500);
   }
-  
+
 });
 
 export default app;
