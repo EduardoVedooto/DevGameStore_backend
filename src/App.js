@@ -9,6 +9,7 @@ import messageSanitization from "./sanitization/newMessage.js";
 import { v4 as uuid } from "uuid";
 import cardSchema from "./schema/card.schema.js";
 import cardSanitization from "./sanitization/card.js";
+import updateUserSchema from "./schema/updateUser.schema.js";
 
 const app = express();
 app.use(cors());
@@ -173,7 +174,6 @@ app.post("/checkout", async (req, res) => {
   try {
     // TOKEN
     const token = req.header("Authorization")?.replace("Bearer ", "");
-    console.log(token);
     if (!token || !token.trim().length) return res.sendStatus(401);
     const response = await connection.query("SELECT * FROM sessions WHERE token = $1", [token]);
     if (!response.rowCount) return res.sendStatus(404);
@@ -213,6 +213,31 @@ app.post("/checkout", async (req, res) => {
 
     res.sendStatus(200);
 
+  } catch (e) {
+    console.error(e);
+    res.sendStatus(500);
+  }
+});
+
+app.put("/update-user", async (req, res) => {
+  try {
+    const token = req.header("Authorization")?.replace("Bearer ", "");
+    if (!token || !token.trim().length) return res.sendStatus(401);
+    const response = await connection.query("SELECT * FROM sessions WHERE token = $1", [token]);
+    if (!response.rowCount) return res.sendStatus(404);
+    const { userId } = response.rows[0];
+    const validation = updateUserSchema(req.body);
+    if (validation.error) {
+      return res.status(400).send(validation.error.details[0]);
+    }
+
+    const { name, email, picture } = userSanitization(req.body);
+
+    await connection.query("UPDATE users SET name = $1, email = $2, picture = $3 WHERE id = $4;",
+      [name, email, picture, userId]);
+
+    const result = await connection.query("SELECT id, name, email, picture FROM users WHERE id = $1", [userId]);
+    res.status(200).send(result.rows[0]);
   } catch (e) {
     console.error(e);
     res.sendStatus(500);
