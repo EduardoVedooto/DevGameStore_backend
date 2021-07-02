@@ -4,17 +4,17 @@ import connection from '../src/database/Database.js';
 import database from '../src/database/Database.js';
 
 beforeEach(async () => {
-    await connection.query(`DELETE FROM users`);
-    await connection.query('DELETE FROM sessions')
-  });
+  await connection.query(`DELETE FROM users`);
+  await connection.query('DELETE FROM sessions')
+});
 
 afterAll(async () => {
-    database.end();
+  database.end();
 });
 
 describe("POST /contact-us", () => {
 
-  it("returns status 201 for invalid email", async () => {
+  it("returns status 201 for valid email", async () => {
     const body = {
       "email": "gamestore@gmail.com",
       "subject": "gamestoresubject",

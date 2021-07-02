@@ -7,6 +7,8 @@ import bcrypt from "bcrypt";
 import userSanitization from "./sanitization/newUser.js";
 import messageSanitization from "./sanitization/newMessage.js";
 import { v4 as uuid } from "uuid";
+import cardSchema from "./schema/card.schema.js";
+import cardSanitization from "./sanitization/card.js";
 
 const app = express();
 app.use(cors());
@@ -68,10 +70,10 @@ app.post("/sign-in", async (req, res) => {
 });
 
 app.get("/dashboard", async (req, res) => {
-  try{
+  try {
     const games = await connection.query(`SELECT * FROM games;`);
     res.status(200).send(games.rows)
-  }catch(e){
+  } catch (e) {
     console.log(e);
     res.sendStatus(500);
   }
@@ -79,10 +81,10 @@ app.get("/dashboard", async (req, res) => {
 
 app.get("/games/:category", async (req, res) => {
   const { category } = req.params;
-  try{
+  try {
     const games = await connection.query(`SELECT * FROM games WHERE category = $1`, [category]);
     res.status(200).send(games.rows)
-  }catch(e){
+  } catch (e) {
     console.log(e);
     res.sendStatus(500);
   }
@@ -90,41 +92,132 @@ app.get("/games/:category", async (req, res) => {
 
 app.get("/game/:id", async (req, res) => {
   const { id } = req.params;
-  console.log(id);
-  try{
+  try {
     const game = await connection.query(`SELECT * FROM games WHERE id = $1`, [id]);
     res.status(200).send(game.rows[0])
-  }catch(e){
+  } catch (e) {
     console.log(e);
+    res.sendStatus(500);
+  }
+});
+
+app.post("/cart", async (req, res) => {
+  console.log(req.body);
+  const ids = req.body.ids;
+
+  console.log(ids);
+
+  if (!ids || !ids.length) return res.sendStatus(400);
+
+  let query = "SELECT id, name, price, image FROM games WHERE id = $1";
+
+  for (let index = 1; index < ids.length; index++) {
+    query += ` OR id = $${index + 1}`;
+  }
+
+  console.log(query, ids);
+  try {
+    const response = await connection.query(query, ids);
+    const games = response.rows;
+
+    if (response.rowCount !== ids.length) {
+
+      const idsWanted = {};
+
+      for (let i = 0; i < ids.length; i++) {
+        idsWanted[ids[i]] = ids[i];
+      }
+
+      const gamesFounded = games.filter(game => idsWanted[game.id]);
+      if (gamesFounded.length === 0) return res.sendStatus(404);
+
+      return res.status(206).send(gamesFounded);
+    }
+
+
+    res.send(response.rows);
+  } catch (e) {
+    console.error(e);
     res.sendStatus(500);
   }
 });
 
 app.get("/gamelist", async (req, res) => {
-  const {gamename} = req.query;
-  try{
+  const { gamename } = req.query;
+  try {
     const gameRequest = await connection.query('SELECT * FROM games WHERE name ILIKE $1', ["%" + gamename + "%"]);
     res.status(200).send(gameRequest.rows)
-  }catch(e){
+  } catch (e) {
     console.log(e);
     res.sendStatus(500);
   }
 });
 
-app.post("/contact-us", async (req, res) =>{
+app.post("/contact-us", async (req, res) => {
   const validation = messageSchema(req.body);
   if (validation.error) {
     return res.status(400).send(validation.error.details[0]);
   }
   const { email, subject, message } = messageSanitization(req.body);
-  try{
+  try {
     await connection.query('INSERT INTO contact (email, subject, message) VALUES ($1, $2, $3)', [email, subject, message]);
     res.sendStatus(201);
-  }catch(e){
+  } catch (e) {
     console.log(e);
     res.sendStatus(500);
   }
 
 });
+
+app.post("/checkout", async (req, res) => {
+  try {
+    // TOKEN
+    const token = req.header("Authorization")?.replace("Bearer ", "");
+    console.log(token);
+    if (!token || !token.trim().length) return res.sendStatus(401);
+    const response = await connection.query("SELECT * FROM sessions WHERE token = $1", [token]);
+    if (!response.rowCount) return res.sendStatus(404);
+    const { userId } = response.rows[0];
+
+    // Payment Method
+    const type = req.query.type;
+    if (!(type === "deb" || type === "cre" || type === "pix" || type === "bol")) return res.sendStatus(400);
+    if (type === "deb" || type === "cre") {
+      const validation = cardSchema(req.body.card);
+      if (validation.error) return res.status(400).send(validation.error.details[0]);
+      const { name, number, cvv, month, year } = cardSanitization(req.body.card);
+
+      const previousCard = await connection.query(`SELECT id FROM cards WHERE "userId" = $1 AND cvv = $2 AND type = $3`,
+        [userId, cvv, type]);
+      if (!previousCard.rowCount) {
+        await connection.query(`
+        INSERT INTO cards 
+        (name, number, cvv, month, year, "userId", type) 
+        VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+          [name, bcrypt.hashSync(number, 10), cvv, month, year, userId, type]);
+      }
+    }
+
+    const games = req.body.games;
+    if (!games.length) return res.sendStatus(400);
+    const totalPrice = req.body.total;
+    const timestamp = Date.now();
+
+    for (let i = 0; i < games.length; i++) {
+      await connection.query(`
+        INSERT INTO sales 
+        (date, "userId", "gameId", "saleId", type, "gamePrice", "totalPrice")
+        VALUES (NOW(), $1, $2, $3, $4, $5, $6)  
+      `, [userId, games[i].id, timestamp, type, games[i].price, totalPrice]);
+    }
+
+    res.sendStatus(200);
+
+  } catch (e) {
+    console.error(e);
+    res.sendStatus(500);
+  }
+});
+
 
 export default app;
