@@ -103,10 +103,7 @@ app.get("/game/:id", async (req, res) => {
 });
 
 app.post("/cart", async (req, res) => {
-  console.log(req.body);
   const ids = req.body.ids;
-
-  console.log(ids);
 
   if (!ids || !ids.length) return res.sendStatus(400);
 
